@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epidemiology Dashboard</title>
+    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Sarabun', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 25px; }
+        .dashboard-container { max-width: 1200px; margin: auto; }
+        .card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; padding: 20px; }
+        .summary-boxes { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
+        .box { flex: 1; color: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); min-width: 220px; }
+        .box h3 { margin: 0; font-size: 1em; font-weight: normal; opacity: 0.9; }
+        .box p { margin: 8px 0 0; font-size: 2em; font-weight: bold; }
+        .flex-container { display: flex; gap: 20px; flex-wrap: wrap; }
+        .flex-child { flex: 1; min-width: 350px; }
+    </style>
+</head>
+<body>
+    <div class="dashboard-container">
+        <h1>📊 Dashboard สถานการณ์ระบาดวิทยา COVID-19</h1>
+        
+        <div class="summary-boxes">
+            <div class="box" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                <h3>ผู้ป่วยสะสมทั้งหมด</h3>
+                <p>816,989 ราย</p>
+            </div>
+            <div class="box" style="background: linear-gradient(135deg, #f39c12, #d35400);">
+                <h3>จังหวัดที่พบสูงสุด</h3>
+                <p>กรุงเทพมหานคร</p>
+            </div>
+            <div class="box" style="background: linear-gradient(135deg, #3498db, #2980b9);">
+                <h3>อัตราส่วน ชาย : หญิง</h3>
+                <p>375,073 : 388,910</p>
+            </div>
+        </div>
+
+        <!-- กราฟแนวโน้มผู้ป่วย -->
+        <div class="card">
+            <div id="trendChart" style="width:100%; height:400px;"></div>
+        </div>
+        
+        <div class="flex-container">
+            <!-- กราฟสัดส่วนเพศ -->
+            <div class="card flex-child">
+                <div id="genderChart" style="width:100%; height:350px;"></div>
+            </div>
+            <!-- แผนที่กระจายของโรค -->
+            <div class="card flex-child">
+                <div id="mapChart" style="width:100%; height:350px;"></div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 1. ส่วนที่เพิ่มให้ใหม่: กราฟแนวโน้มผู้ป่วย (Mock Data)
+        var dates = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
+        var cases = [1200, 1500, 1100, 3500, 8000, 15000, 32000, 45000, 28000, 15000, 8000, 4200];
+        
+        var trendData = [{
+            x: dates,
+            y: cases,
+            type: 'scatter',
+            mode: 'lines+markers',
+            name: 'ผู้ป่วยรายใหม่',
+            line: {color: '#e74c3c', width: 3, shape: 'spline'},
+            marker: {size: 8, color: '#c0392b'},
+            fill: 'tozeroy',
+            fillcolor: 'rgba(231, 76, 60, 0.2)'
+        }];
+        
+        var trendLayout = {
+            title: { text: 'แนวโน้มผู้ป่วยรายใหม่ต่อเดือน (Epidemic Curve)', font: {size: 18} },
+            xaxis: { title: 'เดือน' },
+            yaxis: { title: 'จำนวนผู้ป่วย (ราย)' },
+            margin: { t: 50, l: 60, r: 30, b: 50 }
+        };
+        Plotly.newPlot('trendChart', trendData, trendLayout);
+
+        // 2. กราฟสัดส่วนเพศ (ของเดิมของคุณ)
+        var genderData = [{
+            values: [375073, 388910],
+            labels: ['ชาย', 'หญิง'],
+            type: 'pie',
+            marker: { colors: ['#3498db', '#e84393'] }
+        }];
+        var genderLayout = { title: { text: 'สัดส่วนผู้ป่วยแยกตามเพศ', font: {size: 16} } };
+        Plotly.newPlot('genderChart', genderData, genderLayout);
+
+        // 3. แผนที่กระจายของโรค (ของเดิมของคุณ)
+        var mapData = [{
+            type: 'scattergeo',
+            mode: 'markers',
+            locationmode: 'country names',
+            lon: [100.5018, 100.2736, 100.5968, 100.9847, 100.5217, 100.5250, 100.0443, 101.0719, 100.5954, 100.5774],
+            lat: [13.7563, 13.5475, 13.5993, 13.3611, 13.8591, 14.0208, 13.8199, 13.6904, 7.1897, 14.3516],
+            text: ['กทม: 195,391', 'สมุทรสาคร: 55,724', 'สมุทรปราการ: 54,287', 'ชลบุรี: 42,258', 'นนทบุรี: 37,136', 'ปทุมธานี: 35,227', 'นครปฐม: 24,957', 'ฉะเชิงเทรา: 16,869', 'สงขลา: 14,649', 'อยุธยา: 13,536'],
+            marker: {
+                size: [40, 25, 24, 20, 18, 17, 15, 12, 11, 10],
+                color: '#e74c3c',
+                opacity: 0.7
+            }
+        }];
+        var mapLayout = {
+            title: { text: '10 อันดับจังหวัดที่มีผู้ป่วยสูงสุด', font: {size: 16} },
+            geo: {
+                scope: 'asia',
+                center: { lon: 100.5, lat: 13.7 },
+                projection: { scale: 6 },
+                showland: true,
+                landcolor: '#eef2f5'
+            },
+            margin: { t: 50, l: 20, r: 20, b: 20 }
+        };
+        Plotly.newPlot('mapChart', mapData, mapLayout);
+    </script>
+</body>
+</html>
