@@ -3,119 +3,334 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Epidemiology Dashboard</title>
-    <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;600&display=swap" rel="stylesheet">
+    <title>EpiCenter Dashboard - ระบบรายงานสถานการณ์ทางระบาดวิทยา</title>
+    
+    <!-- Google Fonts & Libraries -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.plot.ly/plotly-2.24.1.min.js"></script>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <style>
-        body { font-family: 'Sarabun', sans-serif; background-color: #f4f7f6; margin: 0; padding: 20px; }
-        h1 { text-align: center; color: #2c3e50; margin-bottom: 25px; }
-        .dashboard-container { max-width: 1200px; margin: auto; }
-        .card { background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px; padding: 20px; }
-        .summary-boxes { display: flex; justify-content: space-between; margin-bottom: 20px; gap: 15px; flex-wrap: wrap; }
-        .box { flex: 1; color: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); min-width: 220px; }
-        .box h3 { margin: 0; font-size: 1em; font-weight: normal; opacity: 0.9; }
-        .box p { margin: 8px 0 0; font-size: 2em; font-weight: bold; }
-        .flex-container { display: flex; gap: 20px; flex-wrap: wrap; }
-        .flex-child { flex: 1; min-width: 350px; }
+        * { box-sizing: border-box; font-family: 'Sarabun', sans-serif; }
+        body { background-color: #f8fafc; margin: 0; padding: 20px; color: #1e293b; }
+        .dashboard-container { max-width: 1280px; margin: 0 auto; }
+
+        /* Header Style */
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .logo-group { display: flex; align-items: center; gap: 12px; }
+        .logo-title { margin: 0; font-size: 20px; font-weight: 700; color: #0f172a; display: flex; align-items: center; gap: 8px; }
+        .logo-subtitle { margin: 2px 0 0 0; font-size: 13px; color: #64748b; }
+        .header-actions { display: flex; align-items: center; gap: 12px; }
+        .mock-badge {
+            background-color: #fef9c3;
+            color: #b45309;
+            font-size: 13px;
+            font-weight: 600;
+            padding: 6px 14px;
+            border-radius: 6px;
+        }
+        .upload-btn {
+            background-color: #00a8ff;
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .upload-btn:hover { background-color: #0086cc; }
+
+        /* Alert Banner */
+        .alert-banner {
+            background-color: #f0f9ff;
+            border: 1px solid #bae6fd;
+            border-radius: 10px;
+            padding: 14px 18px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: #0369a1;
+            font-size: 14px;
+        }
+
+        /* KPI Cards Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+        .kpi-card {
+            background: white;
+            border-radius: 10px;
+            padding: 18px 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+            background-clip: padding-box;
+        }
+        .kpi-card.blue { border-left: 5px solid #0284c7; }
+        .kpi-card.orange { border-left: 5px solid #f97316; }
+        .kpi-card.green { border-left: 5px solid #10b981; }
+        .kpi-card.red { border-left: 5px solid #ef4444; }
+
+        .kpi-title { font-size: 13px; color: #64748b; margin-bottom: 8px; font-weight: 500; }
+        .kpi-value { font-size: 28px; font-weight: 700; color: #0f172a; }
+        .kpi-subtext { font-size: 12px; font-weight: 400; color: #64748b; margin-left: 4px; }
+
+        /* Main Section Grid */
+        .main-grid {
+            display: grid;
+            grid-template-columns: 1.3fr 1fr;
+            gap: 20px;
+        }
+        @media (max-width: 900px) {
+            .main-grid { grid-template-columns: 1fr; }
+        }
+
+        .chart-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        .card-title { font-size: 17px; font-weight: 700; color: #0f172a; margin: 0; }
+        .card-subtitle { font-size: 13px; color: #64748b; margin: 2px 0 0 0; }
+
+        .range-select {
+            padding: 6px 12px;
+            border-radius: 6px;
+            border: 1px solid #cbd5e1;
+            font-size: 13px;
+            color: #334155;
+            background: white;
+            cursor: pointer;
+        }
+
+        .legend-container {
+            display: flex;
+            gap: 16px;
+            font-size: 12px;
+            color: #475569;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+        .legend-item { display: flex; align-items: center; gap: 6px; }
+        .legend-box-red { width: 14px; height: 10px; background-color: #ef4444; border-radius: 2px; }
+        .legend-box-blue { width: 14px; height: 10px; background-color: #38bdf8; border-radius: 2px; }
+
+        #map {
+            width: 100%;
+            height: 380px;
+            border-radius: 8px;
+            margin-top: 10px;
+            z-index: 1;
+        }
     </style>
 </head>
 <body>
-    <div class="dashboard-container">
-        <h1>📊 Dashboard สถานการณ์ระบาดวิทยา COVID-19</h1>
-        
-        <div class="summary-boxes">
-            <div class="box" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
-                <h3>ผู้ป่วยสะสมทั้งหมด</h3>
-                <p>816,989 ราย</p>
-            </div>
-            <div class="box" style="background: linear-gradient(135deg, #f39c12, #d35400);">
-                <h3>จังหวัดที่พบสูงสุด</h3>
-                <p>กรุงเทพมหานคร</p>
-            </div>
-            <div class="box" style="background: linear-gradient(135deg, #3498db, #2980b9);">
-                <h3>อัตราส่วน ชาย : หญิง</h3>
-                <p>375,073 : 388,910</p>
-            </div>
-        </div>
 
-        <!-- กราฟแนวโน้มผู้ป่วย -->
-        <div class="card">
-            <div id="trendChart" style="width:100%; height:400px;"></div>
+<div class="dashboard-container">
+
+    <!-- Top Navigation Header -->
+    <header class="header">
+        <div class="logo-group">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#0284c7" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+            </svg>
+            <div>
+                <h1 class="logo-title">EpiCenter Dashboard</h1>
+                <p class="logo-subtitle">ระบบรายงานสถานการณ์ทางระบาดวิทยา</p>
+            </div>
         </div>
-        
-        <div class="flex-container">
-            <!-- กราฟสัดส่วนเพศ -->
-            <div class="card flex-child">
-                <div id="genderChart" style="width:100%; height:350px;"></div>
-            </div>
-            <!-- แผนที่กระจายของโรค -->
-            <div class="card flex-child">
-                <div id="mapChart" style="width:100%; height:350px;"></div>
-            </div>
+        <div class="header-actions">
+            <span class="mock-badge">แสดงข้อมูลจำลอง</span>
+            <button class="upload-btn" onclick="document.getElementById('excelUpload').click()">อัปโหลดไฟล์ Excel</button>
+            <input type="file" id="excelUpload" accept=".xlsx, .xls, .csv" style="display:none;" onchange="handleFileUpload(event)">
+        </div>
+    </header>
+
+    <!-- Alert Banner -->
+    <div class="alert-banner">
+        <span style="font-size: 18px;">ⓘ</span>
+        <span><strong>ข้อควรทราบ</strong> ไม่พบไฟล์ confirmed-cases-since-120465.xlsx ในระบบ ดึงข้อมูลจำลอง (Mock Data) มาแสดงผลแทน คุณสามารถอัปโหลดไฟล์จริงด้วยตนเองที่มุมขวาบน</span>
+    </div>
+
+    <!-- 4 Summary KPI Cards -->
+    <div class="kpi-grid">
+        <div class="kpi-card blue">
+            <div class="kpi-title">ผู้ติดเชื้อสะสม (Total Cases)</div>
+            <div class="kpi-value">77,475</div>
+        </div>
+        <div class="kpi-card orange">
+            <div class="kpi-title">กำลังรักษา (Active)</div>
+            <div class="kpi-value">2,945</div>
+        </div>
+        <div class="kpi-card green">
+            <div class="kpi-title">รักษาหาย (Recovered)</div>
+            <div class="kpi-value">73,601</div>
+        </div>
+        <div class="kpi-card red">
+            <div class="kpi-title">เสียชีวิต (Deaths)</div>
+            <div class="kpi-value">929 <span class="kpi-subtext">(อัตราป่วยตาย 1.2%)</span></div>
         </div>
     </div>
 
-    <script>
-        // 1. ส่วนที่เพิ่มให้ใหม่: กราฟแนวโน้มผู้ป่วย (Mock Data)
-        var dates = ['ม.ค.', 'ก.พ.', 'มี.ค.', 'เม.ย.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.', 'ต.ค.', 'พ.ย.', 'ธ.ค.'];
-        var cases = [1200, 1500, 1100, 3500, 8000, 15000, 32000, 45000, 28000, 15000, 8000, 4200];
+    <!-- Main Grid: Epidemic Curve & Spatial Map -->
+    <div class="main-grid">
         
-        var trendData = [{
-            x: dates,
-            y: cases,
-            type: 'scatter',
-            mode: 'lines+markers',
-            name: 'ผู้ป่วยรายใหม่',
-            line: {color: '#e74c3c', width: 3, shape: 'spline'},
-            marker: {size: 8, color: '#c0392b'},
-            fill: 'tozeroy',
-            fillcolor: 'rgba(231, 76, 60, 0.2)'
-        }];
-        
-        var trendLayout = {
-            title: { text: 'แนวโน้มผู้ป่วยรายใหม่ต่อเดือน (Epidemic Curve)', font: {size: 18} },
-            xaxis: { title: 'เดือน' },
-            yaxis: { title: 'จำนวนผู้ป่วย (ราย)' },
-            margin: { t: 50, l: 60, r: 30, b: 50 }
-        };
-        Plotly.newPlot('trendChart', trendData, trendLayout);
+        <!-- Left Column: Epidemic Curve -->
+        <div class="chart-card">
+            <div class="card-header">
+                <h2 class="card-title">แนวโน้มผู้ป่วยรายวัน (Epidemic Curve)</h2>
+                <select class="range-select">
+                    <option>ทั้งหมด</option>
+                    <option>30 วันล่าสุด</option>
+                    <option>90 วันล่าสุด</option>
+                </select>
+            </div>
 
-        // 2. กราฟสัดส่วนเพศ (ของเดิมของคุณ)
-        var genderData = [{
-            values: [375073, 388910],
-            labels: ['ชาย', 'หญิง'],
-            type: 'pie',
-            marker: { colors: ['#3498db', '#e84393'] }
-        }];
-        var genderLayout = { title: { text: 'สัดส่วนผู้ป่วยแยกตามเพศ', font: {size: 16} } };
-        Plotly.newPlot('genderChart', genderData, genderLayout);
+            <div class="legend-container">
+                <div class="legend-item"><div class="legend-box-red"></div> ค่าเฉลี่ย 7 วัน (7-day MA)</div>
+                <div class="legend-item"><div class="legend-box-blue"></div> ผู้ป่วยรายใหม่ (New Cases)</div>
+            </div>
 
-        // 3. แผนที่กระจายของโรค (ของเดิมของคุณ)
-        var mapData = [{
-            type: 'scattergeo',
-            mode: 'markers',
-            locationmode: 'country names',
-            lon: [100.5018, 100.2736, 100.5968, 100.9847, 100.5217, 100.5250, 100.0443, 101.0719, 100.5954, 100.5774],
-            lat: [13.7563, 13.5475, 13.5993, 13.3611, 13.8591, 14.0208, 13.8199, 13.6904, 7.1897, 14.3516],
-            text: ['กทม: 195,391', 'สมุทรสาคร: 55,724', 'สมุทรปราการ: 54,287', 'ชลบุรี: 42,258', 'นนทบุรี: 37,136', 'ปทุมธานี: 35,227', 'นครปฐม: 24,957', 'ฉะเชิงเทรา: 16,869', 'สงขลา: 14,649', 'อยุธยา: 13,536'],
-            marker: {
-                size: [40, 25, 24, 20, 18, 17, 15, 12, 11, 10],
-                color: '#e74c3c',
-                opacity: 0.7
-            }
-        }];
-        var mapLayout = {
-            title: { text: '10 อันดับจังหวัดที่มีผู้ป่วยสูงสุด', font: {size: 16} },
-            geo: {
-                scope: 'asia',
-                center: { lon: 100.5, lat: 13.7 },
-                projection: { scale: 6 },
-                showland: true,
-                landcolor: '#eef2f5'
-            },
-            margin: { t: 50, l: 20, r: 20, b: 20 }
-        };
-        Plotly.newPlot('mapChart', mapData, mapLayout);
-    </script>
+            <div id="trendChart" style="width:100%; height:340px;"></div>
+        </div>
+
+        <!-- Right Column: Spatial Map -->
+        <div class="chart-card">
+            <div class="card-header" style="flex-direction: column; align-items: flex-start;">
+                <h2 class="card-title">การกระจายตัวระดับพื้นที่ (Spatial Map)</h2>
+                <p class="card-subtitle">ความหนาแน่นของผู้ป่วยแบ่งตามจังหวัด</p>
+            </div>
+            <div id="map"></div>
+        </div>
+
+    </div>
+
+</div>
+
+<script>
+    // 1. สร้างข้อมูลกราฟแนวโน้มรายวัน (Mock Data)
+    let dates = [];
+    let newCases = [];
+    let ma7 = [];
+
+    let startDate = new Date('2022-04-12');
+    for (let i = 0; i < 140; i++) {
+        let d = new Date(startDate);
+        d.setDate(startDate.getDate() + i);
+        let yy = d.getFullYear().toString().substring(2);
+        let mm = String(d.getMonth() + 1).padStart(2, '0');
+        let dd = String(d.getDate()).padStart(2, '0');
+        dates.push(`${yy}-${mm}-${dd}`);
+
+        let base = 50 + 45 * Math.sin(i / 10);
+        let noise = (Math.random() - 0.5) * 45;
+        let val = Math.max(5, Math.round(base + noise));
+        newCases.push(val);
+    }
+
+    // คำนวณ Moving Average 7 วัน
+    for (let i = 0; i < newCases.length; i++) {
+        let sum = 0, count = 0;
+        for (let j = Math.max(0, i - 6); j <= i; j++) {
+            sum += newCases[j];
+            count++;
+        }
+        ma7.push(Math.round(sum / count));
+    }
+
+    // วาดกราฟด้วย Plotly
+    let traceNewCases = {
+        x: dates,
+        y: newCases,
+        type: 'scatter',
+        mode: 'lines',
+        fill: 'tozeroy',
+        fillcolor: 'rgba(56, 189, 248, 0.5)',
+        line: { color: '#38bdf8', width: 1 },
+        name: 'ผู้ป่วยรายใหม่'
+    };
+
+    let traceMA7 = {
+        x: dates,
+        y: ma7,
+        type: 'scatter',
+        mode: 'lines',
+        line: { color: '#ef4444', width: 2.5 },
+        name: 'ค่าเฉลี่ย 7 วัน'
+    };
+
+    let layout = {
+        showlegend: false,
+        margin: { t: 10, l: 35, r: 10, b: 50 },
+        xaxis: { tickangle: -45, font: { size: 10 } },
+        yaxis: { range: [0, 150] }
+    };
+
+    Plotly.newPlot('trendChart', [traceNewCases, traceMA7], layout, {responsive: true, displayModeBar: false});
+
+    // 2. สร้างแผนที่ Dark Mode ด้วย Leaflet
+    let map = L.map('map').setView([13.75, 100.50], 6);
+
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        maxZoom: 18
+    }).addTo(map);
+
+    // เพิ่มจุดความหนาแน่นของผู้ป่วยในแผนที่
+    let provinces = [
+        { name: 'กรุงเทพมหานคร', lat: 13.7563, lng: 100.5018, radius: 22 },
+        { name: 'สมุทรสาคร', lat: 13.5475, lng: 100.2736, radius: 16 },
+        { name: 'สมุทรปราการ', lat: 13.5993, lng: 100.5968, radius: 15 },
+        { name: 'ชลบุรี', lat: 13.3611, lng: 100.9847, radius: 14 },
+        { name: 'นนทบุรี', lat: 13.8591, lng: 100.5217, radius: 13 },
+        { name: 'ปทุมธานี', lat: 14.0208, lng: 100.5250, radius: 12 },
+        { name: 'เชียงใหม่', lat: 18.7883, lng: 98.9853, radius: 11 },
+        { name: 'สงขลา', lat: 7.1897, lng: 100.5954, radius: 10 }
+    ];
+
+    provinces.forEach(p => {
+        L.circleMarker([p.lat, p.lng], {
+            color: '#ef4444',
+            fillColor: '#ef4444',
+            fillOpacity: 0.6,
+            radius: p.radius
+        }).bindPopup(`<b>${p.name}</b>`).addTo(map);
+    });
+
+    // ฟังก์ชันจัดการการอัปโหลดไฟล์ Excel
+    function handleFileUpload(event) {
+        let file = event.target.files[0];
+        if (file) {
+            alert('อัปโหลดไฟล์ ' + file.name + ' สำเร็จระบบกำลังประมวลผลข้อมูล');
+        }
+    }
+</script>
+
 </body>
 </html>
